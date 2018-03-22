@@ -9,3 +9,5 @@ class NeuronGene:
         self.target_neurons: {NeuronGene} = set()
         self.source_neurons: {NeuronGene} = set()
 
+    def is_redundant(self):
+        return type == NeuronType.HIDDEN and (len(self.target_neurons) == 0 or len(self.source_neurons))

@@ -42,8 +42,8 @@ class GenomeFactory:
 
         self.basic_neurons = [self.bias_neuron] + self.input_neurons + self.output_neurons
 
-        self.possible_io_connections_ids = [(x.inno_id, y.inno_id, self.next_connection_innovation())
-                                            for x in self.input_neurons for y in self.output_neurons]
+        self.possible_io_connections_ids = {(x.inno_id, y.inno_id, self.next_connection_innovation())
+                                            for x in self.input_neurons for y in self.output_neurons}
 
     def next_neuron_innovation(self) -> int:
         innovation = self.neuron_innovation_number
@@ -62,9 +62,9 @@ class GenomeFactory:
         return [self.create_genome(birth_generation) for _ in range(length)]
 
     def create_genome(self, birth_generation: int):
-        num_connections = max(1, self.genome_params.initial_interconnections_proportion * len(self.possible_io_connections_ids))
+        num_connections: float = max(1, self.genome_params.initial_interconnections_proportion * len(self.possible_io_connections_ids))
         connections = {ConnectionGene(i, a, b, self.random_weight()) for (a, b, i)
-                       in numpy.random.choice(self.possible_io_connections_ids, num_connections)}
+                       in random.sample(self.possible_io_connections_ids, int(num_connections))}
 
         neurons = {a.inno_id: NeuronGene(a.inno_id, a.activation_fn, a.type) for a in self.basic_neurons}
 
@@ -72,8 +72,8 @@ class GenomeFactory:
             source_neuron = neurons[conn.from_id]
             target_neuron = neurons[conn.to_id]
 
-            source_neuron.target_neurons.append(target_neuron)
-            target_neuron.source_neurons.append(source_neuron)
+            source_neuron.target_neurons.add(target_neuron)
+            target_neuron.source_neurons.add(source_neuron)
 
         return Genome(neurons, connections, birth_generation)
 
@@ -127,5 +127,4 @@ class GenomeFactory:
 
     def mutate_delete_connection(self, genome: Genome) -> bool:
         return
-
 
