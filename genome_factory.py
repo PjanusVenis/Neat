@@ -1,6 +1,7 @@
 import random
 
 import numpy
+import time
 
 import activation_fns
 import genome_parameters
@@ -75,16 +76,16 @@ class GenomeFactory:
             source_neuron.target_neurons.add(target_neuron)
             target_neuron.source_neurons.add(source_neuron)
 
-        return Genome(neurons, connections, birth_generation)
+        return Genome(neurons, self.basic_neurons, connections, birth_generation)
 
     def create_offspring(self, genome: Genome) -> Genome:
-        new_genome = Genome(genome.neuron_gene_list, genome.connection_gene_list, self.current_generation)
+        new_genome = Genome(genome.neuron_gene_dict, genome.connection_gene_list, self.current_generation)
         return new_genome
 
     def mutate_genome(self, genome: Genome):
         success = False
         while not success:
-            success = numpy.random.choice(self.mutations, p = self.mutation_probabilities)(genome)
+            success = numpy.random.choice(self.mutations, p=self.mutation_probabilities)(genome)
 
     def mutate_weights(self, genome: Genome) -> bool:
         return
@@ -107,10 +108,12 @@ class GenomeFactory:
         new_connection1 = self.create_connection(connection_to_replace.from_id, neuron_id, connection_to_replace.weight)
         new_connection2 = self.create_connection(neuron_id, connection_to_replace.to_id, 1.0)
 
-        new_neuron.target_neurons.add(genome.neuron_gene_list[connection_to_replace.to_id])
-        new_neuron.source_neurons.add(genome.neuron_gene_list[connection_to_replace.from_id])
+        new_neuron.target_neurons.add(genome.neuron_gene_dict[connection_to_replace.to_id])
+        new_neuron.source_neurons.add(genome.neuron_gene_dict[connection_to_replace.from_id])
 
-        genome.neuron_gene_list[new_neuron.inno_id] = new_neuron
+        genome.neuron_gene_dict[new_neuron.inno_id] = new_neuron
+        genome.neuron_gene_list.append(new_neuron)
+
         genome.connection_gene_list.add(new_connection1)
         genome.connection_gene_list.add(new_connection2)
 
@@ -121,10 +124,57 @@ class GenomeFactory:
             else self.next_connection_innovation()
         return ConnectionGene(conn_id, from_id, to_id, weight)
 
-
     def mutate_add_connection(self, genome: Genome) -> bool:
-        return
+        neuron_count = len(genome.neuron_gene_list)
+        hidden_output_neuron_count = neuron_count - self.input_count - 1
+        input_bias_hidden_neuron_count = neuron_count - self.output_count
+
+        if self.genome_params.feed_forward_only:
+            for attempts in range(5):
+                source_neuron_idx = random.randint(input_bias_hidden_neuron_count)
+                if self.input_count + 1 + self.output_count > source_neuron_idx >= self.input_count + 1:
+                    source_neuron_idx += self.output_count
+
+                target_neuron_idx = self.input_count + 1 + random.randint(hidden_output_neuron_count - 1)
+                if source_neuron_idx == target_neuron_idx:
+                    target_neuron_idx += 1
+                    if target_neuron_idx == neuron_count:
+                        target_neuron_idx = input_bias_hidden_neuron_count
+
+                source_neuron = genome.neuron_gene_list[source_neuron_idx]
+                target_neuron = genome.neuron_gene_list[target_neuron_idx]
+
+                if target_neuron in source_neuron.target_neurons or genome.is_connection_cyclic(source_neuron.inno_id, target_neuron.inno_id):
+                    continue
+
+                self.mutate_add_create_connection(genome, source_neuron, target_neuron)
+                return True
+        else:
+            for attempts in range(5):
+                source_neuron_idx = random.randint(neuron_count)
+                target_neuron_idx = self.input_count + 1 + random.randint(hidden_output_neuron_count)
+
+                source_neuron = genome.neuron_gene_list[source_neuron_idx]
+                target_neuron = genome.neuron_gene_list[target_neuron_idx]
+
+                self.mutate_add_create_connection(genome, source_neuron, target_neuron)
+                return True
+
+    def mutate_add_create_connection(self, genome: Genome, source_neuron: NeuronGene, target_neuron: NeuronGene):
+        connection = self.create_connection(source_neuron.inno_id, target_neuron.inno_id, self.random_weight())
+        genome.connection_gene_list.add(connection)
+        source_neuron.target_neurons.add(connection.to_id)
+        target_neuron.source_neurons.add(connection.from_id)
 
     def mutate_delete_connection(self, genome: Genome) -> bool:
         return
+
+
+def test():
+    start = time.time()
+    a = ActivationFnLibrary(activation_fns.sine, activation_fns.gaussian)
+    b = GenomeFactory(5, 5, a)
+    c = b.create_genome_list(5000, 9)
+    map(lambda x: b.mutate_genome(x), c)
+    print(time.time() - start)
 
