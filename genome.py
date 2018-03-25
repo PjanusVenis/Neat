@@ -1,3 +1,4 @@
+from evalution_info import EvaluationInfo
 from neuron_gene import NeuronGene
 from connection_gene import ConnectionGene
 from typing import Set, Dict, List
@@ -14,6 +15,8 @@ class Genome:
         self.input_gene_list = {n for _, n in neuron_gene_dict.items() if n.type == NeuronType.BIAS or n.type == NeuronType.INPUT}
         self.output_gene_list = {n for _, n in neuron_gene_dict.items() if n.type == NeuronType.OUTPUT}
         self.hidden_gene_list = {n for _, n in neuron_gene_dict.items() if n.type == NeuronType.HIDDEN}
+        self.evaluation: EvaluationInfo = EvaluationInfo(0, 0)
+        self.position: List[(int, float)] = []
 
     def is_connection_cyclic(self, from_id: int, to_id: int) -> bool:
         if from_id == to_id:
@@ -37,3 +40,8 @@ class Genome:
             work_stack.extend([a for a in current_neuron.source_neurons])
 
         return False
+
+    def get_position(self):
+        if len(self.position) == 0:
+            self.position = [(a.inno_id, a.weight) for a in self.connection_gene_list]
+        return self.position

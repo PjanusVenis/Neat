@@ -1,4 +1,5 @@
 import random
+from typing import List
 
 import numpy
 import time
@@ -88,7 +89,12 @@ class GenomeFactory:
             success = numpy.random.choice(self.mutations, p=self.mutation_probabilities)(genome)
 
     def mutate_weights(self, genome: Genome) -> bool:
-        return
+        num_connection_mutation: float = numpy.sin(random.random() * (numpy.pi / 2)) * len(genome.connection_gene_list)
+        connections_to_mutate: List[ConnectionGene] = random.sample(genome.connection_gene_list, num_connection_mutation)
+        for conn in connections_to_mutate:
+            conn.weight = self.random_weight()
+
+        return num_connection_mutation > 0
 
     def mutate_add_node(self, genome: Genome) -> bool:
         if len(genome.connection_gene_list) == 0:
@@ -167,7 +173,17 @@ class GenomeFactory:
         target_neuron.source_neurons.add(connection.from_id)
 
     def mutate_delete_connection(self, genome: Genome) -> bool:
-        return
+        if len(genome.connection_gene_list) < 2:
+            return False
+
+        connection_to_delete: ConnectionGene = random.choice(genome.connection_gene_list)
+        from_neuron = genome.neuron_gene_list[connection_to_delete.from_id]
+        to_neuron = genome.neuron_gene_list[connection_to_delete.to_id]
+
+        from_neuron.target_neurons.remove(to_neuron)
+        to_neuron.source_neurons.remove(from_neuron)
+
+        return True
 
 
 def test():
