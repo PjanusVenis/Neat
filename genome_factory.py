@@ -81,7 +81,10 @@ class GenomeFactory:
 
     def create_offspring(self, genome: Genome) -> Genome:
         new_genome = Genome(genome.neuron_gene_dict, genome.connection_gene_list, self.current_generation)
+        self.mutate_genome(new_genome)
         return new_genome
+
+
 
     def mutate_genome(self, genome: Genome):
         success = False

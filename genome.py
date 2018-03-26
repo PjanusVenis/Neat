@@ -4,6 +4,7 @@ from connection_gene import ConnectionGene
 from typing import Set, Dict, List
 
 from neuron_type import NeuronType
+from specie import Specie
 
 
 class Genome:
@@ -17,6 +18,9 @@ class Genome:
         self.hidden_gene_list = {n for _, n in neuron_gene_dict.items() if n.type == NeuronType.HIDDEN}
         self.evaluation: EvaluationInfo = EvaluationInfo(0, 0)
         self.position: List[(int, float)] = []
+        self.specie: Specie = None
+        self.fitness = 0
+        self.novelty = 0
 
     def is_connection_cyclic(self, from_id: int, to_id: int) -> bool:
         if from_id == to_id:

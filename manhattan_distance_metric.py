@@ -58,4 +58,19 @@ class ManhattanDistanceMetric:
                 return distance
 
     def calculate_centroid(self, pos_list: List[List[(int, float)]]) -> List[(int, float)]:
-        
+        centroid_pos_helper: List[(float, int, int)] = []
+        centroid_pos_dict: Dict[int: int] = {}
+
+        for genome_pos in pos_list:
+            for pos_id, pos_weight in genome_pos:
+                if pos_id in centroid_pos_dict:
+                    helper_weight, helper_count, helper_inno = centroid_pos_helper[centroid_pos_dict[pos_id]]
+                    centroid_pos_helper[centroid_pos_dict[pos_id]] = (helper_weight + pos_weight, helper_count + 1, helper_inno)
+                else:
+                    idx = len(centroid_pos_helper)
+                    centroid_pos_helper.append((pos_weight, 1, pos_id))
+                    centroid_pos_dict[pos_id] = idx
+
+        return [(c, a / b) for a, b, c in centroid_pos_helper]
+
+
