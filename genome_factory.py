@@ -84,6 +84,7 @@ class GenomeFactory:
         self.mutate_genome(new_genome)
         return new_genome
 
+    def create_offspring_sexual(self, parent1: Genome, parent2: Genome) -> Genome:
 
 
     def mutate_genome(self, genome: Genome):
