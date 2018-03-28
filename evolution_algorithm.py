@@ -30,9 +30,24 @@ class EvolutionAlgorithm:
         self.update_best_genome()
 
     def perform_generation(self):
-        return
+        specie_stats, offspring_count = self.calculate_specie_stats()
+        offsprings = self.create_offspring(specie_stats, offspring_count)
+        self.trim_species_to_elites(specie_stats)
+        self.genome_list = sum([a.genome_list for a in self.specie_list], [])
+        self.genome_list.extend(offsprings)
+        self.genome_list_evaluator.evaluate(self.genome_list)
+        self.specie_list = self.speciation_strategy.speciate_genomes(self.genome_list, self.evolution_params.specie_count)
+        self.sort_specie_genomes()
+        self.update_best_genome()
 
-    def calculate_specie_stats(self):
+    def trim_species_to_elites(self, specie_stats: List[SpecieStats]):
+        for i in range(len(specie_stats)):
+            specie = self.specie_list[i]
+            specie_stat = specie_stats[i]
+
+            specie.genome_list = specie.genome_list[:len(specie.genome_list) - specie_stat.elite_size_int]
+
+    def calculate_specie_stats(self) -> (List[SpecieStats], int):
         total_mean_fitness = 0.0
         specie_count = len(self.specie_list)
         specie_stats_list: List[SpecieStats] = []
@@ -95,9 +110,9 @@ class EvolutionAlgorithm:
             selection_size = len(self.specie_list[i].genome_list) * self.evolution_params.selection_proportion
             specie_stats.selection_size_int = max(1, probabilistic_round(selection_size))
 
-        return specie_stats_list
+        return specie_stats_list, offspring_count
 
-    def create_offspring(self, specie_stats_list: List[SpecieStats], offspring_count: int):
+    def create_offspring(self, specie_stats_list: List[SpecieStats], offspring_count: int) -> List[Genome]:
         specie_count = len(self.specie_list)
         specie_fitness_arr: List[float] = []
         probabilities: List[List[float]] = []
@@ -124,11 +139,32 @@ class EvolutionAlgorithm:
 
             cross_specie_mating_count = probabilistic_round(self.evolution_params.offspring_interspecies_proportion * specie_stats.offspring_sexual_count)
 
-            mating_count = 0
+            cross_specie_offsprings = []
+            sexual_offsprings = []
+            for _ in range(cross_specie_mating_count):
+                specie1 = self.specie_list[specie_idx]
+                temp_specie_list = self.specie_list[:]
+                temp_specie_list.remove(specie1)
+                specie2 = random.choice(temp_specie_list)
 
-            cross_specie_offsprings = [ for _ in range(cross_specie_mating_count)]
+                genome1 = random.choice(specie1.genome_list)
+                genome2 = random.choice(specie2.genome_list)
 
+                cross_specie_offsprings.append(self.genome_factory.create_offspring_sexual(genome1, genome2, self.neat_type))
 
+            for _ in range(specie_stats.offspring_sexual_count - cross_specie_offsprings):
+                specie = self.specie_list[specie_idx]
+                genome1 = random.choice(specie.genome_list)
+
+                temp_genome_list = specie.genome_list[:]
+                temp_genome_list.remove(genome1)
+                genome2 = random.choice(temp_genome_list)
+
+                sexual_offsprings.append(self.genome_factory.create_offspring_sexual(genome1, genome2, self.neat_type))
+
+            offspring_list = sexual_offsprings + cross_specie_offsprings + specie_offsprings
+
+        return offspring_list
 
     def sort_specie_genomes(self):
         for specie in self.specie_list:

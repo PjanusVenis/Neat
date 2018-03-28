@@ -7,7 +7,10 @@ import time
 import activation_fns
 import genome_parameters
 from activation_function_library import ActivationFnLibrary
+from correlation_item_type import CorrelationItemType
+from correlation_statistics import CorrelationStatistics
 from genome import Genome
+from neat_type import NeatType
 from neuron_gene import NeuronGene
 from connection_gene import ConnectionGene
 from neuron_type import NeuronType
@@ -21,6 +24,7 @@ class GenomeFactory:
         self.activation_fn_library = activation_fn_library
         self.genome_params = genome_params
         self.connection_innovation = {}
+        self.neuron_innovation = {}
         self.neuron_innovation_number = 0
         self.connection_innovation_number = 0
         self.genome_list = []
@@ -84,8 +88,140 @@ class GenomeFactory:
         self.mutate_genome(new_genome)
         return new_genome
 
-    def create_offspring_sexual(self, parent1: Genome, parent2: Genome) -> Genome:
+    def create_offspring_sexual(self, parent1: Genome, parent2: Genome, neat_type: NeatType) -> Genome:
+        correlation_list, correlation_stats = \
+            self.correlate_connection_lists(parent1.connection_gene_list, parent2.connection_gene_list)
 
+        offspring = self.create_genome(self.current_generation)
+
+        fitness_switch = False
+        if neat_type == NeatType.Novelty:
+            if parent1.novelty > parent2.novelty:
+                fitness_switch = True
+            elif parent2.novelty == parent1.novelty:
+                fitness_switch = random.random() < 0.5
+
+        elif neat_type == NeatType.CNAOS or neat_type == NeatType.Objective:
+            if parent1.fitness > parent2.fitness:
+                fitness_switch = True
+            elif parent2.fitness == parent1.fitness:
+                fitness_switch = random.random() < 0.5
+
+        combine_disjoint_excess = random.random() < self.genome_params.disjoint_excess_recombine_probability
+        disjoint_excess_list: List[(ConnectionGene, ConnectionGene, CorrelationItemType)] = []
+
+        for conn1, conn2, corr_type in correlation_list:
+            selection_switch = False
+
+            if corr_type == CorrelationItemType.Match:
+                selection_switch = random.random() < 0.5
+            elif fitness_switch and conn1 is not None:
+                selection_switch = True
+            elif not fitness_switch and conn2 is not None:
+                selection_switch = False
+            else:
+                if combine_disjoint_excess:
+                    disjoint_excess_list.append((conn1, conn2, corr_type))
+                continue
+
+            if selection_switch:
+                connection = conn1
+            else:
+                connection = conn2
+
+            self.add_connection(offspring, connection, corr_type == CorrelationItemType.Match)
+
+        if combine_disjoint_excess:
+            for conn1, conn2, corr_type in disjoint_excess_list:
+                if conn1 is None:
+                    connection = conn2
+                else:
+                    connection = conn1
+
+                if (self.genome_params.feed_forward_only and not offspring.is_connection_cyclic(connection.from_id, connection.to_id)) or \
+                        not self.genome_params.feed_forward_only:
+                    self.add_connection(offspring, connection, False)
+
+        return offspring
+
+    def add_connection(self, genome: Genome, conn: ConnectionGene, overwrite_existing: bool):
+        connection_genes_dict = {a.inno_id: a for a in genome.connection_gene_list}
+
+        if conn.inno_id in connection_genes_dict:
+            if overwrite_existing:
+                genome.connection_gene_list[conn.inno_id] = conn.weight
+        else:
+            genome.connection_gene_list.add(conn)
+            added_neuron = False
+
+            if conn.from_id not in genome.neuron_gene_dict:
+                neuron = self.neuron_innovation[conn.from_id]
+                genome.neuron_gene_dict[conn.from_id] = neuron
+                genome.neuron_gene_list.append(neuron)
+
+                added_neuron = True
+            if conn.to_id not in genome.neuron_gene_dict:
+                neuron = self.neuron_innovation[conn.to_id]
+                genome.neuron_gene_dict[conn.to_id] = neuron
+                genome.neuron_gene_list.append(neuron)
+
+                added_neuron = True
+
+            genome.connection_gene_list = sorted(genome.connection_gene_list, key=lambda x: x.inno_id)
+            if added_neuron:
+                genome.neuron_gene_list = sorted(genome.neuron_gene_list, key=lambda x: x.inno_id)
+
+    def correlate_connection_lists(self, conns1: List[ConnectionGene], conns2: List[ConnectionGene]) -> (List[(ConnectionGene, ConnectionGene, CorrelationItemType)],
+                                                                                                         CorrelationStatistics):
+        correlation_stats: CorrelationStatistics = CorrelationStatistics()
+        correlation_list: List[(ConnectionGene, ConnectionGene, CorrelationItemType)] = []
+
+        if len(conns1) == 0:
+            correlation_stats.excess_gene_count = len(conns2)
+            for gene in conns2:
+                correlation_list.append((None, gene, CorrelationItemType.Excess))
+            return correlation_list, correlation_stats
+        elif len(conns2) == 0:
+            correlation_stats.excess_gene_count = len(conns1)
+            for gene in conns1:
+                correlation_list.append((None, gene, CorrelationItemType.Excess))
+            return correlation_list, correlation_stats
+
+        conn1_idx = 0
+        conn2_idx = 0
+
+        while True:
+            gene1 = conns1[conn1_idx]
+            gene2 = conns2[conn2_idx]
+
+            if gene2.inno_id < gene1.inno_id:
+                correlation_list.append((None, gene2, CorrelationItemType.Disjoint))
+                correlation_stats.disjoint_gene_count += 1
+
+                conn2_idx += 1
+            elif gene2.inno_id == gene1.inno_id:
+                correlation_list.append((gene1, gene2, CorrelationItemType.Match))
+                correlation_stats.matching_gene_count += 1
+
+                conn2_idx += 1
+                conn1_idx += 1
+            else:
+                correlation_list.append((gene1, None, CorrelationItemType.Excess))
+                correlation_stats.excess_gene_count += 1
+
+                conn1_idx += 1
+
+            if conn1_idx == len(conns1):
+                correlation_stats.excess_gene_count += len(conns2) - (conn2_idx + 1)
+                correlation_list.extend([(None, a, CorrelationItemType.Excess) for a in conns2[conn2_idx:]])
+
+                return correlation_list, correlation_stats
+
+            if conn2_idx == len(conns2):
+                correlation_stats.disjoint_gene_count += len(conns1) - (conn1_idx + 1)
+                correlation_list.extend([(a, None, CorrelationItemType.Disjoint) for a in conns1[conn1_idx:]])
+
+                return correlation_list, correlation_stats
 
     def mutate_genome(self, genome: Genome):
         success = False
@@ -115,6 +251,9 @@ class GenomeFactory:
             self.connection_replaced[connection_to_replace.inno_id] = neuron_id
 
         new_neuron = NeuronGene(neuron_id, self.activation_fn_library.get_random_function(), NeuronType.HIDDEN)
+
+        self.neuron_innovation[new_neuron.inno_id] = new_neuron
+
         new_connection1 = self.create_connection(connection_to_replace.from_id, neuron_id, connection_to_replace.weight)
         new_connection2 = self.create_connection(neuron_id, connection_to_replace.to_id, 1.0)
 
@@ -197,4 +336,3 @@ def test():
     c = b.create_genome_list(5000, 9)
     map(lambda x: b.mutate_genome(x), c)
     print(time.time() - start)
-
