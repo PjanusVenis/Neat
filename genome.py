@@ -4,11 +4,10 @@ from connection_gene import ConnectionGene
 from typing import Set, Dict, List
 
 from neuron_type import NeuronType
-from specie import Specie
 
 
 class Genome:
-    def __init__(self, neuron_gene_dict: Dict[int, NeuronGene], neuron_gene_list: List[NeuronGene], connection_gene_list: Set[ConnectionGene], birth_generation: int):
+    def __init__(self, neuron_gene_dict: Dict[int, NeuronGene], neuron_gene_list: List[NeuronGene], connection_gene_list: List[ConnectionGene], birth_generation: int):
         self.neuron_gene_dict = neuron_gene_dict
         self.connection_gene_list = connection_gene_list
         self.birth_generation = birth_generation
@@ -18,13 +17,18 @@ class Genome:
         self.hidden_gene_list = {n for _, n in neuron_gene_dict.items() if n.type == NeuronType.HIDDEN}
         self.evaluation: EvaluationInfo = EvaluationInfo(0, 0)
         self.position: List[(int, float)] = []
-        self.specie: Specie = None
+        self.specie = None
         self.fitness = 0
         self.novelty = 0
 
     def is_connection_cyclic(self, from_id: int, to_id: int) -> bool:
         if from_id == to_id:
             return True
+
+        seen = []
+        for a in self.neuron_gene_list:
+            if a not in seen:
+                seen.append(a)
 
         src_neuron = self.neuron_gene_dict[from_id]
 

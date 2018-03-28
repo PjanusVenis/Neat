@@ -1,8 +1,8 @@
-from typing import List
+from typing import List, Tuple
 
 
 class AcyclicNetwork:
-    def __init__(self, activation_fns: List, connections: List[(int, int, float)], layer_info: List(int, int),
+    def __init__(self, activation_fns: [], connections: List[Tuple[int, int, float]], layer_info: List[Tuple[int, int]],
                  output_node_idx_list: List[int], node_count: int, input_count: int, output_count: int):
         self.activation_fns = activation_fns
         self.connections = connections

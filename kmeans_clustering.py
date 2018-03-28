@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 from genome import Genome
 from specie import Specie
@@ -15,10 +15,11 @@ class KMeansClustering:
             new_specie = Specie()
             selected_genome = genome_list[i]
             selected_genome.specie = new_specie
+            new_specie.genome_list.append(selected_genome)
             new_specie.centroid = selected_genome.get_position()
             specie_list.append(new_specie)
 
-        for i in range(specie_list, len(genome_list)):
+        for i in range(len(specie_list), len(genome_list)):
             selected_genome = genome_list[i]
             closest_specie = self.find_closest_specie(selected_genome, specie_list)
             selected_genome.specie = closest_specie
@@ -49,12 +50,12 @@ class KMeansClustering:
         genome_list: List[Genome] = sum([a.genome_list for a in specie_list], [])
 
         for step in range(self.max_loops):
-            closest_species = [self.find_closest_specie(a) for a in genome_list]
+            closest_species = [self.find_closest_specie(a, specie_list) for a in genome_list]
 
             for i in range(len(genome_list)):
                 if closest_species[i] != genome_list[i].specie:
                     genome = genome_list[i]
-                    specie = specie_list[i]
+                    specie = closest_species[i]
                     genome.specie.genome_list.remove(genome)
                     genome.specie = specie
                     specie.genome_list.append(genome)
@@ -70,6 +71,7 @@ class KMeansClustering:
                     original_specie = selected_genome.specie
                     original_specie.genome_list.remove(selected_genome)
                     specie.genome_list.append(selected_genome)
+                    selected_genome.specie = specie
 
                     original_specie.centroid = self.calculate_specie_centroid(original_specie)
                     specie.centroid = self.calculate_specie_centroid(specie)
@@ -79,11 +81,11 @@ class KMeansClustering:
 
         return specie_list
 
-    def calculate_specie_centroid(self, specie: Specie) -> List[(int, float)]:
+    def calculate_specie_centroid(self, specie: Specie) -> List[Tuple[int, float]]:
         return self.distance_metric.calculate_centroid([a.get_position() for a in specie.genome_list])
 
     def get_genomes_by_distance_from_species(self, genome_list: List[Genome]) -> List[Genome]:
-        distance_list = [(self.distance_metric.measure_distance(a.get_position(), a.specie.centroid, a)) for a in genome_list]
+        distance_list = [(self.distance_metric.measure_distance(a.get_position(), a.specie.centroid), a) for a in genome_list]
         distance_list.sort(key=lambda x: x[0])
         return [a for _, a in distance_list]
 

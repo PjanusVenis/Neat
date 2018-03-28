@@ -1,4 +1,5 @@
 import random
+from functools import cmp_to_key
 from typing import List
 
 import numpy
@@ -21,6 +22,7 @@ class EvolutionAlgorithm:
         self.genome_factory = genome_factory
         self.population_size = population_size
         self.genome_list = genome_factory.create_genome_list(population_size, 0)
+
         self.current_champ: Genome = None
         self.current_champs: List[Genome] = []
 
@@ -124,18 +126,20 @@ class EvolutionAlgorithm:
 
             for j in range(specie_stats.selection_size_int):
                 if self.neat_type == NeatType.Objective or self.neat_type == NeatType.CNAOS:
-                    probabilities[i][j] = self.specie_list[i].genome_list[j].fitness
+                    probabilities[i].append(self.specie_list[i].genome_list[j].fitness)
                 elif self.neat_type == NeatType.Novelty:
-                    probabilities[i][j] = self.specie_list[i].genome_list[j].novelty
+                    probabilities[i].append(self.specie_list[i].genome_list[j].novelty)
 
         offspring_list: List[Genome] = []
 
         for specie_idx in range(specie_count):
             specie_stats = specie_stats_list[specie_idx]
             specie_probabilities = probabilities[specie_idx]
+            sum_probabilities = sum(specie_probabilities)
+            specie_probabilities = [a / sum_probabilities for a in specie_probabilities]
 
-            specie_offsprings = [self.genome_factory.create_offspring(a) for a in numpy.random.choice(self.specie_list[specie_idx].genome_list, specie_stats.offspring_asexual_count,
-                                                                p=specie_probabilities)]
+            specie_offsprings = [self.genome_factory.create_offspring(a) for a in numpy.random.choice(self.specie_list[specie_idx].genome_list[:specie_stats.selection_size_int],
+                                                                                                      specie_stats.offspring_asexual_count, p=specie_probabilities)]
 
             cross_specie_mating_count = probabilistic_round(self.evolution_params.offspring_interspecies_proportion * specie_stats.offspring_sexual_count)
 
@@ -152,9 +156,14 @@ class EvolutionAlgorithm:
 
                 cross_specie_offsprings.append(self.genome_factory.create_offspring_sexual(genome1, genome2, self.neat_type))
 
-            for _ in range(specie_stats.offspring_sexual_count - cross_specie_offsprings):
+            for _ in range(specie_stats.offspring_sexual_count - len(cross_specie_offsprings)):
                 specie = self.specie_list[specie_idx]
                 genome1 = random.choice(specie.genome_list)
+
+                if len(specie.genome_list) == 1:
+                    sexual_offsprings.append(self.genome_factory.create_offspring(genome1))
+                    continue
+
 
                 temp_genome_list = specie.genome_list[:]
                 temp_genome_list.remove(genome1)
@@ -168,7 +177,7 @@ class EvolutionAlgorithm:
 
     def sort_specie_genomes(self):
         for specie in self.specie_list:
-            specie.genome_list.sort(key=self.creator_comparator())
+            specie.genome_list.sort(key=cmp_to_key(self.creator_comparator()))
 
     def update_best_genome(self):
         self.current_champs = [max(a.genome_list, key=lambda x: x.fitness) for a in self.specie_list]
@@ -194,6 +203,8 @@ class EvolutionAlgorithm:
                 return 1
 
             return 0
+
+        return comparator
 
 def probabilistic_round(a: float) -> int:
     integer_part = int(a)

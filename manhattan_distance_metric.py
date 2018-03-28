@@ -1,5 +1,5 @@
 from plistlib import Dict
-from typing import List
+from typing import List, Tuple
 
 
 class ManhattanDistanceMetric:
@@ -8,7 +8,7 @@ class ManhattanDistanceMetric:
         self.mismatch_coeff = mismatch_coeff
         self.mismatch_constant = mismatch_constant
 
-    def measure_distance(self, pos1: List[(int, float)], pos2: List[(int, float)]) -> float:
+    def measure_distance(self, pos1: List[Tuple[int, float]], pos2: List[Tuple[int, float]]) -> float:
         pos1_length = float(len(pos1))
         pos2_length = float(len(pos2))
 
@@ -46,18 +46,18 @@ class ManhattanDistanceMetric:
                 pos2_idx += 1
 
             if pos1_idx == pos1_length:
-                for i in range(pos2_idx, pos2_length):
+                for i in range(pos2_idx, int(pos2_length)):
                     _, pos2_weight = pos2[i]
                     distance += self.mismatch_constant + (abs(pos2_weight) * self.mismatch_coeff)
                 return distance
 
             if pos2_idx == pos2_length:
-                for i in range(pos1_idx, pos1_length):
+                for i in range(pos1_idx, int(pos1_length)):
                     _, pos1_weight = pos1[i]
                     distance += self.mismatch_constant + (abs(pos1_weight) * self.mismatch_coeff)
                 return distance
 
-    def calculate_centroid(self, pos_list: List[List[(int, float)]]) -> List[(int, float)]:
+    def calculate_centroid(self, pos_list: List[List[Tuple[int, float]]]) -> List[Tuple[int, float]]:
         centroid_pos_helper: List[(float, int, int)] = []
         centroid_pos_dict: Dict[int: int] = {}
 

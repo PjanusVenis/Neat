@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import List, Tuple
 
 import numpy
 import time
@@ -69,22 +69,41 @@ class GenomeFactory:
 
     def create_genome(self, birth_generation: int):
         num_connections: float = max(1, self.genome_params.initial_interconnections_proportion * len(self.possible_io_connections_ids))
-        connections = {ConnectionGene(i, a, b, self.random_weight()) for (a, b, i)
-                       in random.sample(self.possible_io_connections_ids, int(num_connections))}
+        connections = [ConnectionGene(i, a, b, self.random_weight()) for (a, b, i)
+                       in random.sample(self.possible_io_connections_ids, int(num_connections))]
 
-        neurons = {a.inno_id: NeuronGene(a.inno_id, a.activation_fn, a.type) for a in self.basic_neurons}
+        neuron_list = [NeuronGene(a.inno_id, a.activation_fn, a.type) for a in self.basic_neurons]
+        neurons = {a.inno_id: a for a in neuron_list}
 
         for conn in connections:
             source_neuron = neurons[conn.from_id]
             target_neuron = neurons[conn.to_id]
 
-            source_neuron.target_neurons.add(target_neuron)
-            target_neuron.source_neurons.add(source_neuron)
+            source_neuron.target_neurons.append(target_neuron)
+            target_neuron.source_neurons.append(source_neuron)
 
-        return Genome(neurons, self.basic_neurons, connections, birth_generation)
+        return Genome(neurons, neuron_list, connections, birth_generation)
 
     def create_offspring(self, genome: Genome) -> Genome:
-        new_genome = Genome(genome.neuron_gene_dict, genome.connection_gene_list, self.current_generation)
+        neuron_gene_list = []
+        neuron_gene_dict = {}
+
+        for i in range(len(genome.neuron_gene_list)):
+            original_gene = genome.neuron_gene_list[i]
+            neuron_gene = NeuronGene(original_gene.inno_id, original_gene.activation_fn, original_gene.type)
+            neuron_gene.target_neurons = original_gene.target_neurons[:]
+            neuron_gene.source_neurons = original_gene.source_neurons[:]
+
+            neuron_gene_list.append(neuron_gene)
+            neuron_gene_dict[neuron_gene.inno_id] = neuron_gene
+
+        connection_genes = []
+
+        for conn in genome.connection_gene_list:
+            connection_genes.append(ConnectionGene(conn.inno_id, conn.from_id, conn.to_id, conn.weight))
+
+        new_genome = Genome(neuron_gene_dict, neuron_gene_list, connection_genes, self.current_generation)
+
         self.mutate_genome(new_genome)
         return new_genome
 
@@ -149,29 +168,29 @@ class GenomeFactory:
 
         if conn.inno_id in connection_genes_dict:
             if overwrite_existing:
-                genome.connection_gene_list[conn.inno_id] = conn.weight
+                genome.connection_gene_list[conn.inno_id].weight = conn.weight
         else:
-            genome.connection_gene_list.add(conn)
+            genome.connection_gene_list.append(conn)
             added_neuron = False
 
             if conn.from_id not in genome.neuron_gene_dict:
                 neuron = self.neuron_innovation[conn.from_id]
-                genome.neuron_gene_dict[conn.from_id] = neuron
+                genome.neuron_gene_dict[neuron.inno_id] = neuron
                 genome.neuron_gene_list.append(neuron)
 
                 added_neuron = True
             if conn.to_id not in genome.neuron_gene_dict:
-                neuron = self.neuron_innovation[conn.to_id]
-                genome.neuron_gene_dict[conn.to_id] = neuron
-                genome.neuron_gene_list.append(neuron)
+                h = len(genome.neuron_gene_list) - len(genome.neuron_gene_dict)
 
-                added_neuron = True
+                neuron = self.neuron_innovation[conn.to_id]
+                genome.neuron_gene_dict[neuron.inno_id] = neuron
+                genome.neuron_gene_list.append(neuron)
 
             genome.connection_gene_list = sorted(genome.connection_gene_list, key=lambda x: x.inno_id)
             if added_neuron:
                 genome.neuron_gene_list = sorted(genome.neuron_gene_list, key=lambda x: x.inno_id)
 
-    def correlate_connection_lists(self, conns1: List[ConnectionGene], conns2: List[ConnectionGene]) -> (List[(ConnectionGene, ConnectionGene, CorrelationItemType)],
+    def correlate_connection_lists(self, conns1: List[ConnectionGene], conns2: List[ConnectionGene]) -> (List[Tuple[ConnectionGene, ConnectionGene, CorrelationItemType]],
                                                                                                          CorrelationStatistics):
         correlation_stats: CorrelationStatistics = CorrelationStatistics()
         correlation_list: List[(ConnectionGene, ConnectionGene, CorrelationItemType)] = []
@@ -230,7 +249,7 @@ class GenomeFactory:
 
     def mutate_weights(self, genome: Genome) -> bool:
         num_connection_mutation: float = numpy.sin(random.random() * (numpy.pi / 2)) * len(genome.connection_gene_list)
-        connections_to_mutate: List[ConnectionGene] = random.sample(genome.connection_gene_list, num_connection_mutation)
+        connections_to_mutate: List[ConnectionGene] = random.sample(genome.connection_gene_list, int(num_connection_mutation))
         for conn in connections_to_mutate:
             conn.weight = self.random_weight()
 
@@ -239,6 +258,8 @@ class GenomeFactory:
     def mutate_add_node(self, genome: Genome) -> bool:
         if len(genome.connection_gene_list) == 0:
             return False
+
+        h = len(genome.neuron_gene_dict) - len(genome.neuron_gene_list)
 
         connection_to_replace = numpy.random.choice(genome.connection_gene_list)
         genome.connection_gene_list.remove(connection_to_replace)
@@ -257,14 +278,14 @@ class GenomeFactory:
         new_connection1 = self.create_connection(connection_to_replace.from_id, neuron_id, connection_to_replace.weight)
         new_connection2 = self.create_connection(neuron_id, connection_to_replace.to_id, 1.0)
 
-        new_neuron.target_neurons.add(genome.neuron_gene_dict[connection_to_replace.to_id])
-        new_neuron.source_neurons.add(genome.neuron_gene_dict[connection_to_replace.from_id])
+        new_neuron.target_neurons.append(genome.neuron_gene_dict[connection_to_replace.to_id])
+        new_neuron.source_neurons.append(genome.neuron_gene_dict[connection_to_replace.from_id])
 
         genome.neuron_gene_dict[new_neuron.inno_id] = new_neuron
         genome.neuron_gene_list.append(new_neuron)
 
-        genome.connection_gene_list.add(new_connection1)
-        genome.connection_gene_list.add(new_connection2)
+        genome.connection_gene_list.append(new_connection1)
+        genome.connection_gene_list.append(new_connection2)
 
         return True
 
@@ -275,16 +296,16 @@ class GenomeFactory:
 
     def mutate_add_connection(self, genome: Genome) -> bool:
         neuron_count = len(genome.neuron_gene_list)
-        hidden_output_neuron_count = neuron_count - self.input_count - 1
+        hidden_output_neuron_count = neuron_count - self.input_count
         input_bias_hidden_neuron_count = neuron_count - self.output_count
 
         if self.genome_params.feed_forward_only:
             for attempts in range(5):
-                source_neuron_idx = random.randint(input_bias_hidden_neuron_count)
-                if self.input_count + 1 + self.output_count > source_neuron_idx >= self.input_count + 1:
+                source_neuron_idx = random.randint(0, input_bias_hidden_neuron_count - 1)
+                if self.input_count + self.output_count > source_neuron_idx >= self.input_count:
                     source_neuron_idx += self.output_count
 
-                target_neuron_idx = self.input_count + 1 + random.randint(hidden_output_neuron_count - 1)
+                target_neuron_idx = self.input_count + random.randint(0, hidden_output_neuron_count - 1)
                 if source_neuron_idx == target_neuron_idx:
                     target_neuron_idx += 1
                     if target_neuron_idx == neuron_count:
@@ -300,8 +321,8 @@ class GenomeFactory:
                 return True
         else:
             for attempts in range(5):
-                source_neuron_idx = random.randint(neuron_count)
-                target_neuron_idx = self.input_count + 1 + random.randint(hidden_output_neuron_count)
+                source_neuron_idx = random.randint(0, neuron_count)
+                target_neuron_idx = self.input_count + random.randint(0, hidden_output_neuron_count)
 
                 source_neuron = genome.neuron_gene_list[source_neuron_idx]
                 target_neuron = genome.neuron_gene_list[target_neuron_idx]
@@ -311,9 +332,9 @@ class GenomeFactory:
 
     def mutate_add_create_connection(self, genome: Genome, source_neuron: NeuronGene, target_neuron: NeuronGene):
         connection = self.create_connection(source_neuron.inno_id, target_neuron.inno_id, self.random_weight())
-        genome.connection_gene_list.add(connection)
-        source_neuron.target_neurons.add(connection.to_id)
-        target_neuron.source_neurons.add(connection.from_id)
+        genome.connection_gene_list.append(connection)
+        source_neuron.target_neurons.append(target_neuron)
+        target_neuron.source_neurons.append(source_neuron)
 
     def mutate_delete_connection(self, genome: Genome) -> bool:
         if len(genome.connection_gene_list) < 2:

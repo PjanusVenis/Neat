@@ -6,8 +6,8 @@ class NeuronGene:
         self.inno_id = inno_id
         self.activation_fn = activation_fn
         self.type = type
-        self.target_neurons: {NeuronGene} = set()
-        self.source_neurons: {NeuronGene} = set()
+        self.target_neurons: [NeuronGene] = []
+        self.source_neurons: [NeuronGene] = []
 
     def is_redundant(self):
         return type == NeuronType.HIDDEN and (len(self.target_neurons) == 0 or len(self.source_neurons))
