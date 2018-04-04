@@ -67,6 +67,11 @@ class GenomeFactory:
     def create_genome_list(self, length: int, birth_generation: int) -> list:
         return [self.create_genome(birth_generation) for _ in range(length)]
 
+    def create_blank_neuron(self) -> Genome:
+        neuron_list = [NeuronGene(a.inno_id, a.activation_fn, a.type) for a in self.basic_neurons]
+        neurons = {a.inno_id: a for a in neuron_list}
+        return Genome(neurons, neuron_list, [], self.current_generation)
+
     def create_genome(self, birth_generation: int):
         num_connections: float = max(1, self.genome_params.initial_interconnections_proportion * len(self.possible_io_connections_ids))
         connections = [ConnectionGene(i, a, b, self.random_weight()) for (a, b, i)
@@ -91,8 +96,6 @@ class GenomeFactory:
         for i in range(len(genome.neuron_gene_list)):
             original_gene = genome.neuron_gene_list[i]
             neuron_gene = NeuronGene(original_gene.inno_id, original_gene.activation_fn, original_gene.type)
-            neuron_gene.target_neurons = original_gene.target_neurons[:]
-            neuron_gene.source_neurons = original_gene.source_neurons[:]
 
             neuron_gene_list.append(neuron_gene)
             neuron_gene_dict[neuron_gene.inno_id] = neuron_gene
@@ -101,6 +104,10 @@ class GenomeFactory:
 
         for conn in genome.connection_gene_list:
             connection_genes.append(ConnectionGene(conn.inno_id, conn.from_id, conn.to_id, conn.weight))
+            from_neuron = neuron_gene_dict[conn.from_id]
+            to_neuron = neuron_gene_dict[conn.to_id]
+            from_neuron.target_neurons.append(to_neuron)
+            to_neuron.source_neurons.append(from_neuron)
 
         new_genome = Genome(neuron_gene_dict, neuron_gene_list, connection_genes, self.current_generation)
 
@@ -111,7 +118,8 @@ class GenomeFactory:
         correlation_list, correlation_stats = \
             self.correlate_connection_lists(parent1.connection_gene_list, parent2.connection_gene_list)
 
-        offspring = self.create_genome(self.current_generation)
+        offspring = self.create_blank_neuron()
+        offspring.last_mutation = "Sexual"
 
         fitness_switch = False
         if neat_type == NeatType.Novelty:
@@ -149,6 +157,14 @@ class GenomeFactory:
                 connection = conn2
 
             self.add_connection(offspring, connection, corr_type == CorrelationItemType.Match)
+            if (self.genome_params.feed_forward_only and not offspring.is_connection_cyclic(connection.from_id, connection.to_id)) or \
+                    not self.genome_params.feed_forward_only:
+                offspring.connection_gene_list.remove(connection)
+                from_neuron = offspring.neuron_gene_dict[connection.from_id]
+                to_neuron = offspring.neuron_gene_dict[connection.to_id]
+
+                from_neuron.target_neurons.remove(to_neuron)
+                to_neuron.source_neurons.remove(from_neuron)
 
         if combine_disjoint_excess:
             for conn1, conn2, corr_type in disjoint_excess_list:
@@ -157,9 +173,16 @@ class GenomeFactory:
                 else:
                     connection = conn1
 
+                self.add_connection(offspring, connection, False)
+
                 if (self.genome_params.feed_forward_only and not offspring.is_connection_cyclic(connection.from_id, connection.to_id)) or \
                         not self.genome_params.feed_forward_only:
-                    self.add_connection(offspring, connection, False)
+                    offspring.connection_gene_list.remove(connection)
+                    from_neuron = offspring.neuron_gene_dict[connection.from_id]
+                    to_neuron = offspring.neuron_gene_dict[connection.to_id]
+
+                    from_neuron.target_neurons.remove(to_neuron)
+                    to_neuron.source_neurons.remove(from_neuron)
 
         return offspring
 
@@ -174,7 +197,7 @@ class GenomeFactory:
             added_neuron = False
 
             if conn.from_id not in genome.neuron_gene_dict:
-                neuron = self.neuron_innovation[conn.from_id]
+                neuron = NeuronGene(conn.from_id, self.neuron_innovation[conn.from_id].activation_fn, self.neuron_innovation[conn.from_id].type)
                 genome.neuron_gene_dict[neuron.inno_id] = neuron
                 genome.neuron_gene_list.append(neuron)
 
@@ -182,9 +205,15 @@ class GenomeFactory:
             if conn.to_id not in genome.neuron_gene_dict:
                 h = len(genome.neuron_gene_list) - len(genome.neuron_gene_dict)
 
-                neuron = self.neuron_innovation[conn.to_id]
+                neuron = NeuronGene(conn.to_id, self.neuron_innovation[conn.to_id].activation_fn, self.neuron_innovation[conn.to_id].type)
                 genome.neuron_gene_dict[neuron.inno_id] = neuron
                 genome.neuron_gene_list.append(neuron)
+
+            from_neuron = genome.neuron_gene_dict[conn.from_id]
+            to_neuron = genome.neuron_gene_dict[conn.to_id]
+
+            from_neuron.target_neurons.append(to_neuron)
+            to_neuron.source_neurons.append(from_neuron)
 
             genome.connection_gene_list = sorted(genome.connection_gene_list, key=lambda x: x.inno_id)
             if added_neuron:
@@ -253,11 +282,15 @@ class GenomeFactory:
         for conn in connections_to_mutate:
             conn.weight = self.random_weight()
 
+        genome.last_mutation = "Mutate weights"
+
         return num_connection_mutation > 0
 
     def mutate_add_node(self, genome: Genome) -> bool:
         if len(genome.connection_gene_list) == 0:
             return False
+
+        genome.last_mutation = "Add node"
 
         h = len(genome.neuron_gene_dict) - len(genome.neuron_gene_list)
 
@@ -298,6 +331,8 @@ class GenomeFactory:
         neuron_count = len(genome.neuron_gene_list)
         hidden_output_neuron_count = neuron_count - self.input_count
         input_bias_hidden_neuron_count = neuron_count - self.output_count
+
+        genome.last_mutation = "Add"
 
         if self.genome_params.feed_forward_only:
             for attempts in range(5):
@@ -341,11 +376,13 @@ class GenomeFactory:
             return False
 
         connection_to_delete: ConnectionGene = random.choice(genome.connection_gene_list)
-        from_neuron = genome.neuron_gene_list[connection_to_delete.from_id]
-        to_neuron = genome.neuron_gene_list[connection_to_delete.to_id]
+        from_neuron = genome.neuron_gene_dict[connection_to_delete.from_id]
+        to_neuron = genome.neuron_gene_dict[connection_to_delete.to_id]
 
         from_neuron.target_neurons.remove(to_neuron)
         to_neuron.source_neurons.remove(from_neuron)
+
+        genome.last_mutation = "Delete"
 
         return True
 

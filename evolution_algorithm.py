@@ -41,6 +41,7 @@ class EvolutionAlgorithm:
         self.specie_list = self.speciation_strategy.speciate_genomes(self.genome_list, self.evolution_params.specie_count)
         self.sort_specie_genomes()
         self.update_best_genome()
+        self.genome_factory.current_generation += 1
 
     def trim_species_to_elites(self, specie_stats: List[SpecieStats]):
         for i in range(len(specie_stats)):

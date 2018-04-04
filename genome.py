@@ -20,6 +20,7 @@ class Genome:
         self.specie = None
         self.fitness = 0
         self.novelty = 0
+        self.last_mutation = "Birth"
 
     def is_connection_cyclic(self, from_id: int, to_id: int) -> bool:
         if from_id == to_id:

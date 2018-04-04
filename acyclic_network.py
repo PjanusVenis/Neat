@@ -25,6 +25,7 @@ class AcyclicNetwork:
             self.activation_list[i] = 0.0
 
         con_idx = 0
+
         node_idx = self.input_bias_count
 
         for i in range(1, len(self.layer_info)):
@@ -40,6 +41,7 @@ class AcyclicNetwork:
 
             for _ in range(node_idx, end_node_idx):
                 self.activation_list[node_idx] = self.activation_fns[node_idx](self.activation_list[node_idx])
+                node_idx += 1
 
     def set_input(self, inputs: List[float]):
         if len(inputs) != self.input_count:

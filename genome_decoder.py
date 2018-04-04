@@ -60,7 +60,7 @@ def create_acyclic_network(genome: Genome) -> AcyclicNetwork:
 
     layers_info = []
 
-    for depth in range(max_depth):
+    for depth in range(max_depth + 1):
         while node_idx < node_count and node_depths[node_idx][0] == depth:
             node_idx += 1
         while conn_idx < len(connection_list) and node_depths[connection_list[conn_idx][0]][0] == depth:
@@ -84,7 +84,6 @@ def calculate_depth(genome: Genome) -> (int, List[int]):
 
     node_depth_info = [node_depth_by_id[a.inno_id] for a in genome.neuron_gene_list]
     max_depth = max(node_depth_info)
-    print(len(node_depth_info))
 
     return max_depth, node_depth_info
 
