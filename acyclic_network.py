@@ -52,4 +52,3 @@ class AcyclicNetwork:
     def get_output(self) -> List[float]:
         return [self.activation_list[a] for a in self.output_signal_mapping]
 
-

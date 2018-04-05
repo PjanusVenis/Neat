@@ -48,7 +48,7 @@ class GenomeFactory:
 
         self.basic_neurons = [self.bias_neuron] + self.input_neurons + self.output_neurons
 
-        self.possible_io_connections_ids = {(x.inno_id, y.inno_id, self.next_connection_innovation())
+        self.possible_io_connections_ids = {(x.inno_id, y.inno_id)
                                             for x in self.input_neurons for y in self.output_neurons}
 
     def next_neuron_innovation(self) -> int:
@@ -70,15 +70,18 @@ class GenomeFactory:
     def create_blank_neuron(self) -> Genome:
         neuron_list = [NeuronGene(a.inno_id, a.activation_fn, a.type) for a in self.basic_neurons]
         neurons = {a.inno_id: a for a in neuron_list}
+
         return Genome(neurons, neuron_list, [], self.current_generation)
 
     def create_genome(self, birth_generation: int):
         num_connections: float = max(1, self.genome_params.initial_interconnections_proportion * len(self.possible_io_connections_ids))
-        connections = [ConnectionGene(i, a, b, self.random_weight()) for (a, b, i)
+        connections = [self.create_connection(a, b, self.random_weight()) for (a, b)
                        in random.sample(self.possible_io_connections_ids, int(num_connections))]
 
         neuron_list = [NeuronGene(a.inno_id, a.activation_fn, a.type) for a in self.basic_neurons]
         neurons = {a.inno_id: a for a in neuron_list}
+
+        bias = neurons[0]
 
         for conn in connections:
             source_neuron = neurons[conn.from_id]
@@ -86,6 +89,16 @@ class GenomeFactory:
 
             source_neuron.target_neurons.append(target_neuron)
             target_neuron.source_neurons.append(source_neuron)
+
+        for neuron in neuron_list:
+            if neuron == bias:
+                continue
+
+            bias.target_neurons.append(neuron)
+            neuron.source_neurons.append(bias)
+
+            connection = self.create_connection(bias.inno_id, neuron.inno_id, self.random_weight())
+            connections.append(connection)
 
         return Genome(neurons, neuron_list, connections, birth_generation)
 
@@ -323,8 +336,12 @@ class GenomeFactory:
         return True
 
     def create_connection(self, from_id: int, to_id: int, weight: float) -> ConnectionGene:
-        conn_id = self.connection_innovation[(from_id, to_id)] if (from_id, to_id) in self.connection_innovation \
-            else self.next_connection_innovation()
+        if (from_id, to_id) in self.connection_innovation:
+            conn_id = self.connection_innovation[(from_id, to_id)]
+        else:
+            conn_id = self.next_connection_innovation()
+            self.connection_innovation[(from_id, to_id)] = conn_id
+
         return ConnectionGene(conn_id, from_id, to_id, weight)
 
     def mutate_add_connection(self, genome: Genome) -> bool:
@@ -349,7 +366,7 @@ class GenomeFactory:
                 source_neuron = genome.neuron_gene_list[source_neuron_idx]
                 target_neuron = genome.neuron_gene_list[target_neuron_idx]
 
-                if target_neuron in source_neuron.target_neurons or genome.is_connection_cyclic(source_neuron.inno_id, target_neuron.inno_id):
+                if target_neuron.type == NeuronType.BIAS or target_neuron in source_neuron.target_neurons or genome.is_connection_cyclic(source_neuron.inno_id, target_neuron.inno_id):
                     continue
 
                 self.mutate_add_create_connection(genome, source_neuron, target_neuron)

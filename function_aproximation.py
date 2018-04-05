@@ -34,16 +34,20 @@ def main():
             print("Generation " + str(ea.genome_factory.current_generation))
             print(ea.current_champ.fitness)
 
-            values = []
+            output_values = []
+            example_values = []
             network = genome_decoder.create_acyclic_network(ea.current_champ)
 
             for x, y in fn_evaluator.sample_data:
                 network.set_input([x])
                 network.activate()
                 out = network.get_output()[0]
-                values.append(out)
+                output_values.append(out)
+                example_values.append(y)
 
-            plt.plot(values)
+            plt.clf()
+            plt.plot(output_values)
+            plt.plot(example_values, "r-.")
             plt.savefig("sine.png")
 
 
