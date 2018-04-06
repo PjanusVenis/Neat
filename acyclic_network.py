@@ -31,11 +31,11 @@ class AcyclicNetwork:
         for i in range(1, len(self.layer_info)):
             _, end_connection_idx = self.layer_info[i - 1]
 
-            for _ in range(con_idx, end_connection_idx):
-                from_id, to_id, weight = self.connections[con_idx]
-
+            for idx in range(con_idx, end_connection_idx):
+                from_id, to_id, weight = self.connections[idx]
                 self.activation_list[to_id] += self.activation_list[from_id] * weight
-                con_idx += 1
+
+            con_idx = end_connection_idx
 
             end_node_idx, _ = self.layer_info[i]
 

@@ -5,6 +5,7 @@ import genome_decoder
 import genome_evaluator
 import genome_parameters
 import activation_function_library
+import network_visualizer
 from acyclic_network import AcyclicNetwork
 from evolution_algorithm import EvolutionAlgorithm
 from genome_factory import GenomeFactory
@@ -26,13 +27,14 @@ def main():
     fn_evaluator = FunctionEvaluator(fn)
     list_evaluator = genome_evaluator.GenomeEvaluator(True, fn_evaluator)
 
-    ea = EvolutionAlgorithm(evol_params, kmeans, NeatType.Objective, list_evaluator, genome_factory, 500)
+    ea = EvolutionAlgorithm(evol_params, kmeans, NeatType.CNAOS, list_evaluator, genome_factory, 500)
 
     while True:
         ea.perform_generation()
         if ea.current_champ is not None:
             print("Generation " + str(ea.genome_factory.current_generation))
             print(ea.current_champ.fitness)
+            print(([(a.from_id, a.to_id) for a in ea.current_champ.connection_gene_list]))
 
             output_values = []
             example_values = []
@@ -49,6 +51,9 @@ def main():
             plt.plot(output_values)
             plt.plot(example_values, "r-.")
             plt.savefig("sine.png")
+            plt.clf()
+            if ea.genome_factory.current_generation == 50:
+                network_visualizer.visualize_network(network)
 
 
 class FunctionEvaluator:

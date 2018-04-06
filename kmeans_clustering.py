@@ -42,6 +42,7 @@ class KMeansClustering:
         for specie in specie_list:
             specie.centroid = self.calculate_specie_centroid(specie)
 
+
         return self.speciate_until_convergence(specie_list)
 
     def speciate_until_convergence(self, specie_list: List[Specie]) -> List[Specie]:
@@ -78,7 +79,7 @@ class KMeansClustering:
 
             for specie in specie_list:
                 specie.centroid = self.calculate_specie_centroid(specie)
-
+                
         return specie_list
 
     def calculate_specie_centroid(self, specie: Specie) -> List[Tuple[int, float]]:

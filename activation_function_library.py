@@ -11,7 +11,8 @@ class ActivationFnLibrary:
         self.probabilities = probabilities
 
     def get_random_function(self):
-        return numpy.random.choice(self.fns, p = self.probabilities)
+        return numpy.random.choice(self.fns, p=self.probabilities)
+
 
 default_library = ActivationFnLibrary([activation_fns.binary, activation_fns.gaussian, activation_fns.identity,
                                        activation_fns.relu, activation_fns.sigmoid, activation_fns.sine],
