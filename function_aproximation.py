@@ -6,6 +6,7 @@ import genome_evaluator
 import genome_parameters
 import activation_function_library
 import network_visualizer
+import xml_parser
 from acyclic_network import AcyclicNetwork
 from evolution_algorithm import EvolutionAlgorithm
 from genome_factory import GenomeFactory
@@ -28,6 +29,7 @@ def main():
     list_evaluator = genome_evaluator.GenomeEvaluator(True, fn_evaluator)
 
     ea = EvolutionAlgorithm(evol_params, kmeans, NeatType.CNAOS, list_evaluator, genome_factory, 500)
+    ea.initialization()
 
     while True:
         ea.perform_generation()
@@ -36,24 +38,29 @@ def main():
             print(ea.current_champ.fitness)
             print(([(a.from_id, a.to_id) for a in ea.current_champ.connection_gene_list]))
 
-            output_values = []
-            example_values = []
-            network = genome_decoder.create_acyclic_network(ea.current_champ)
+            if ea.genome_factory.current_generation % 100 == 0:
+                for i in range(len(ea.genome_list)):
 
-            for x, y in fn_evaluator.sample_data:
-                network.set_input([x])
-                network.activate()
-                out = network.get_output()[0]
-                output_values.append(out)
-                example_values.append(y)
+                    output_values = []
+                    example_values = []
+                    network = genome_decoder.create_acyclic_network(ea.genome_list[i])
+
+                    for x, y in fn_evaluator.sample_data:
+                        network.set_input([x])
+                        network.activate()
+                        out = network.get_output()[0]
+                        output_values.append(out)
+                        example_values.append(y)
+
+                    plt.clf()
+                    plt.plot(output_values)
+                    plt.plot(example_values, "r-.")
+                    plt.savefig("sine" + str(i) + ".png")
+                    plt.clf()
 
             plt.clf()
-            plt.plot(output_values)
-            plt.plot(example_values, "r-.")
-            plt.savefig("sine.png")
-            plt.clf()
-            if ea.genome_factory.current_generation == 50:
-                network_visualizer.visualize_network(network)
+            plt.plot([a.fitness for a in ea.genome_list])
+            plt.savefig("fitnesses.png")
 
 
 class FunctionEvaluator:

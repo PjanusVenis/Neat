@@ -1,6 +1,10 @@
 import numpy
 
 
+alpha = 1.6732
+beta = 1.0507
+
+
 def identity(a: float) -> float:
     return a
 
@@ -23,3 +27,7 @@ def binary(a: float) -> float:
 
 def gaussian(a: float) -> float:
     return numpy.exp(-(a**2))
+
+
+def selu(a: float) -> float:
+    return beta * (a if a > 0 else alpha * numpy.exp(a) - alpha)

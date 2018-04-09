@@ -27,7 +27,6 @@ class GenomeFactory:
         self.neuron_innovation = {}
         self.neuron_innovation_number = 0
         self.connection_innovation_number = 0
-        self.genome_list = []
         self.current_generation = 0
 
         self.connection_replaced = {}

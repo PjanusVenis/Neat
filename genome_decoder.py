@@ -30,7 +30,7 @@ def create_acyclic_network(genome: Genome) -> AcyclicNetwork:
     output_count = len(genome.output_gene_list)
     output_neuron_idx_list = idx_by_definition_idx[input_bias_count:input_bias_count + output_count]
 
-    activation_fns = [genome.neuron_gene_list[node_depths[i][1]].activation_fn for a in range(node_count)]
+    activation_fns = [a.activation_fn for _, _, a in node_depths]
 
     connection_list: List[(int, int, float)] = []
 

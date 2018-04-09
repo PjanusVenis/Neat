@@ -25,11 +25,14 @@ class EvolutionAlgorithm:
 
         self.current_champ: Genome = None
         self.current_champs: List[Genome] = []
+        self.specie_list = []
 
+    def initialization(self):
         self.genome_list_evaluator.evaluate(self.genome_list)
-        self.specie_list = self.speciation_strategy.speciate_genomes(self.genome_list, evolution_params.specie_count)
+        self.specie_list = self.speciation_strategy.speciate_genomes(self.genome_list, self.evolution_params.specie_count)
         self.sort_specie_genomes()
         self.update_best_genome()
+
 
     def perform_generation(self):
         specie_stats, offspring_count = self.calculate_specie_stats()
@@ -164,7 +167,6 @@ class EvolutionAlgorithm:
                 if len(specie.genome_list) == 1:
                     sexual_offsprings.append(self.genome_factory.create_offspring(genome1))
                     continue
-
 
                 temp_genome_list = specie.genome_list[:]
                 temp_genome_list.remove(genome1)

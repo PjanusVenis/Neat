@@ -10,7 +10,6 @@ class GenomeEvaluator:
         self.feed_forward_only = feed_forward_only
         self.evaluator = evaluator
 
-
     def evaluate(self, genome_list: List[Genome]):
         networks: List[AcyclicNetwork] = [genome_decoder.create_acyclic_network(a) for a in genome_list]
         fitnesses = [self.evaluator.evaluate(a) for a in networks]
