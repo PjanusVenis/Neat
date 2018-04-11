@@ -13,4 +13,4 @@ class GenomeParameters:
         self.feed_forward_only = feed_forward_only
 
 
-default_genome_parameters = GenomeParameters(5.0, 0.05, 0.1, 0.988, 0.001, 0.01, 0.001, True)
+default_genome_parameters = GenomeParameters(5.0, 0.05, 0.1, 0.988, 0.002, 0.01, 0.000, True)

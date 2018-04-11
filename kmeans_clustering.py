@@ -79,7 +79,10 @@ class KMeansClustering:
 
             for specie in specie_list:
                 specie.centroid = self.calculate_specie_centroid(specie)
-                
+
+        if any([len(a.genome_list) == 0 for a in specie_list]):
+            print("problem")
+
         return specie_list
 
     def calculate_specie_centroid(self, specie: Specie) -> List[Tuple[int, float]]:

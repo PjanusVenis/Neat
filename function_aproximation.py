@@ -1,4 +1,5 @@
 import numpy
+from joblib import Parallel
 
 import evolution_parameters
 import genome_decoder
@@ -16,51 +17,54 @@ import activation_fns
 from neat_type import NeatType
 import matplotlib.pyplot as plt
 
+
+def fn(x):
+    return activation_fns.sine(x * 2 * numpy.pi)
+
+
 def main():
     evol_params = evolution_parameters.default_evolution_parameters
     kmeans = KMeansClustering(ManhattanDistanceMetric())
     activation_fn_library = activation_function_library.default_library
     genome_factory = GenomeFactory(1, 1, activation_fn_library)
 
-    def fn(x):
-        return numpy.sin(x * 2 * numpy.pi)
-
     fn_evaluator = FunctionEvaluator(fn)
     list_evaluator = genome_evaluator.GenomeEvaluator(True, fn_evaluator)
 
-    ea = EvolutionAlgorithm(evol_params, kmeans, NeatType.CNAOS, list_evaluator, genome_factory, 500)
+    ea = EvolutionAlgorithm(evol_params, kmeans, NeatType.Objective, list_evaluator, genome_factory, 500)
     ea.initialization()
 
     while True:
-        ea.perform_generation()
-        if ea.current_champ is not None:
-            print("Generation " + str(ea.genome_factory.current_generation))
-            print(ea.current_champ.fitness)
-            print(([(a.from_id, a.to_id) for a in ea.current_champ.connection_gene_list]))
+        with Parallel(n_jobs=16, backend="threading") as parallel:
+            ea.perform_generation(parallel)
+            if ea.current_champ is not None:
+                print("Generation " + str(ea.genome_factory.current_generation))
+                print(ea.current_champ.fitness)
+                print(([(a.from_id, a.to_id) for a in ea.current_champ.connection_gene_list]))
 
-            if ea.genome_factory.current_generation % 100 == 0:
-                for i in range(len(ea.genome_list)):
+                if ea.genome_factory.current_generation % 100 == 0:
+                    for i in range(len(ea.genome_list)):
 
-                    output_values = []
-                    example_values = []
-                    network = genome_decoder.create_acyclic_network(ea.genome_list[i])
+                        output_values = []
+                        example_values = []
+                        network = genome_decoder.create_acyclic_network(ea.genome_list[i])
 
-                    for x, y in fn_evaluator.sample_data:
-                        network.set_input([x])
-                        network.activate()
-                        out = network.get_output()[0]
-                        output_values.append(out)
-                        example_values.append(y)
+                        for x, y in fn_evaluator.sample_data:
+                            network.set_input([x])
+                            network.activate()
+                            out = network.get_output()[0]
+                            output_values.append(out)
+                            example_values.append(y)
 
-                    plt.clf()
-                    plt.plot(output_values)
-                    plt.plot(example_values, "r-.")
-                    plt.savefig("sine" + str(i) + ".png")
-                    plt.clf()
+                        plt.clf()
+                        plt.plot(output_values)
+                        plt.plot(example_values, "r-.")
+                        plt.savefig("sine" + str(i) + ".png")
+                        plt.clf()
 
-            plt.clf()
-            plt.plot([a.fitness for a in ea.genome_list])
-            plt.savefig("fitnesses.png")
+                plt.clf()
+                plt.plot([a.fitness for a in ea.genome_list])
+                plt.savefig("fitnesses.png")
 
 
 class FunctionEvaluator:

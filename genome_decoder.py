@@ -2,14 +2,11 @@ from functools import cmp_to_key
 from typing import List
 
 from acyclic_network import AcyclicNetwork
-from connection_gene import ConnectionGene
 from genome import Genome
 from neuron_gene import NeuronGene
-from neuron_type import NeuronType
 
 
 def create_acyclic_network(genome: Genome) -> AcyclicNetwork:
-
     max_depth, depth_info = calculate_depth(genome)
     node_count = len(genome.neuron_gene_list)
     input_bias_count = len(genome.input_gene_list)

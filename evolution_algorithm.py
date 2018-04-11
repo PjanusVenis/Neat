@@ -3,6 +3,7 @@ from functools import cmp_to_key
 from typing import List
 
 import numpy
+from joblib import Parallel
 
 from evolution_parameters import EvolutionParameters
 from genome import Genome
@@ -28,19 +29,20 @@ class EvolutionAlgorithm:
         self.specie_list = []
 
     def initialization(self):
-        self.genome_list_evaluator.evaluate(self.genome_list)
-        self.specie_list = self.speciation_strategy.speciate_genomes(self.genome_list, self.evolution_params.specie_count)
-        self.sort_specie_genomes()
-        self.update_best_genome()
+        with Parallel(n_jobs=16) as parallel:
+            self.genome_list_evaluator.evaluate(self.genome_list, parallel)
+            self.specie_list = self.speciation_strategy.speciate_genomes(self.genome_list, self.evolution_params.specie_count)
+            self.sort_specie_genomes()
+            self.update_best_genome()
 
 
-    def perform_generation(self):
+    def perform_generation(self, parallel):
         specie_stats, offspring_count = self.calculate_specie_stats()
         offsprings = self.create_offspring(specie_stats, offspring_count)
         self.trim_species_to_elites(specie_stats)
         self.genome_list = sum([a.genome_list for a in self.specie_list], [])
         self.genome_list.extend(offsprings)
-        self.genome_list_evaluator.evaluate(self.genome_list)
+        self.genome_list_evaluator.evaluate(self.genome_list, parallel)
         self.specie_list = self.speciation_strategy.speciate_genomes(self.genome_list, self.evolution_params.specie_count)
         self.sort_specie_genomes()
         self.update_best_genome()

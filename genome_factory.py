@@ -123,8 +123,7 @@ class GenomeFactory:
 
         new_genome = Genome(neuron_gene_dict, neuron_gene_list, connection_genes, self.current_generation)
 
-        for _ in range(random.randint(4, 10)):
-            self.mutate_genome(new_genome)
+        self.mutate_genome(new_genome)
 
         return new_genome
 
@@ -294,7 +293,8 @@ class GenomeFactory:
         num_connection_mutation: float = numpy.sin(random.random() * (numpy.pi / 2)) * len(genome.connection_gene_list)
         connections_to_mutate: List[ConnectionGene] = random.sample(genome.connection_gene_list, int(num_connection_mutation))
         for conn in connections_to_mutate:
-            conn.weight = self.random_weight()
+                conn.weight = numpy.clip(conn.weight + (random.random() - 0.5),
+                                         -self.genome_params.connection_weight_range, self.genome_params.connection_weight_range)
 
         genome.last_mutation = "Mutate weights"
 
