@@ -35,9 +35,9 @@ class EvolutionAlgorithm:
             self.sort_specie_genomes()
             self.update_best_genome()
 
-
     def perform_generation(self, parallel):
         specie_stats, offspring_count = self.calculate_specie_stats()
+
         offsprings = self.create_offspring(specie_stats, offspring_count)
         self.trim_species_to_elites(specie_stats)
         self.genome_list = sum([a.genome_list for a in self.specie_list], [])
@@ -46,6 +46,7 @@ class EvolutionAlgorithm:
         self.specie_list = self.speciation_strategy.speciate_genomes(self.genome_list, self.evolution_params.specie_count)
         self.sort_specie_genomes()
         self.update_best_genome()
+
         self.genome_factory.current_generation += 1
 
     def trim_species_to_elites(self, specie_stats: List[SpecieStats]):

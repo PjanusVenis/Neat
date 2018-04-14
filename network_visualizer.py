@@ -27,7 +27,9 @@ def visualize_network(network: AcyclicNetwork):
         for layer in network.layer_info:
             _, end_connection_idx = layer
 
-            for _ in range(conn_idx, end_connection_idx):
-                from_id, to_id, _ = network.connections[conn_idx]
+            for idx in range(con_idx, end_connection_idx):
+                from_id, to_id, _ = network.connections[idx]
                 edge_brush >> (nodes[from_id], nodes[to_id])
+
+            con_idx = end_connection_idx
 

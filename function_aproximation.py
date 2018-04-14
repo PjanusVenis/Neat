@@ -35,7 +35,7 @@ def main():
     ea.initialization()
 
     while True:
-        with Parallel(n_jobs=16, backend="threading") as parallel:
+        with Parallel(n_jobs=4, backend="threading") as parallel:
             ea.perform_generation(parallel)
             if ea.current_champ is not None:
                 print("Generation " + str(ea.genome_factory.current_generation))

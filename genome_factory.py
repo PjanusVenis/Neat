@@ -1,5 +1,5 @@
 import random
-from typing import List, Tuple
+from typing import List, Tuple, Awaitable
 
 import numpy
 import time
@@ -147,7 +147,7 @@ class GenomeFactory:
             elif parent2.fitness == parent1.fitness:
                 fitness_switch = random.random() < 0.5
 
-        combine_disjoint_excess = random.random() < self.genome_params.disjoint_excess_recombine_probability
+        combine_disjoint_excess = True  # random.random() < self.genome_params.disjoint_excess_recombine_probability
         disjoint_excess_list: List[(ConnectionGene, ConnectionGene, CorrelationItemType)] = []
 
         for conn1, conn2, corr_type in correlation_list:
@@ -170,14 +170,6 @@ class GenomeFactory:
                 connection = conn2
 
             self.add_connection(offspring, connection, corr_type == CorrelationItemType.Match)
-            if (self.genome_params.feed_forward_only and not offspring.is_connection_cyclic(connection.from_id, connection.to_id)) or \
-                    not self.genome_params.feed_forward_only:
-                offspring.connection_gene_list.remove(connection)
-                from_neuron = offspring.neuron_gene_dict[connection.from_id]
-                to_neuron = offspring.neuron_gene_dict[connection.to_id]
-
-                from_neuron.target_neurons.remove(to_neuron)
-                to_neuron.source_neurons.remove(from_neuron)
 
         if combine_disjoint_excess:
             for conn1, conn2, corr_type in disjoint_excess_list:
@@ -188,14 +180,16 @@ class GenomeFactory:
 
                 self.add_connection(offspring, connection, False)
 
-                if (self.genome_params.feed_forward_only and not offspring.is_connection_cyclic(connection.from_id, connection.to_id)) or \
-                        not self.genome_params.feed_forward_only:
-                    offspring.connection_gene_list.remove(connection)
+                if self.genome_params.feed_forward_only and offspring.is_connection_cyclic(connection.from_id, connection.to_id):
+                    offspring.connection_gene_list = list(filter(lambda a: a.inno_id != connection.inno_id, offspring.connection_gene_list))
                     from_neuron = offspring.neuron_gene_dict[connection.from_id]
                     to_neuron = offspring.neuron_gene_dict[connection.to_id]
 
                     from_neuron.target_neurons.remove(to_neuron)
                     to_neuron.source_neurons.remove(from_neuron)
+
+        if len(offspring.connection_gene_list) < len(parent1.connection_gene_list) and len(offspring.connection_gene_list) < len(parent2.connection_gene_list):
+            print("problem2")
 
         return offspring
 
@@ -204,7 +198,7 @@ class GenomeFactory:
 
         if conn.inno_id in connection_genes_dict:
             if overwrite_existing:
-                genome.connection_gene_list[conn.inno_id].weight = conn.weight
+                connection_genes_dict[conn.inno_id].weight = conn.weight
         else:
             genome.connection_gene_list.append(conn)
             added_neuron = False
@@ -273,21 +267,43 @@ class GenomeFactory:
                 conn1_idx += 1
 
             if conn1_idx == len(conns1):
-                correlation_stats.excess_gene_count += len(conns2) - (conn2_idx + 1)
+                correlation_stats.excess_gene_count += len(conns2) - conn2_idx
+
                 correlation_list.extend([(None, a, CorrelationItemType.Excess) for a in conns2[conn2_idx:]])
 
                 return correlation_list, correlation_stats
 
             if conn2_idx == len(conns2):
-                correlation_stats.disjoint_gene_count += len(conns1) - (conn1_idx + 1)
+                correlation_stats.disjoint_gene_count += len(conns1) - conn1_idx
                 correlation_list.extend([(a, None, CorrelationItemType.Disjoint) for a in conns1[conn1_idx:]])
 
                 return correlation_list, correlation_stats
 
     def mutate_genome(self, genome: Genome):
         success = False
+
+        complexity = len(genome.connection_gene_list)
+
+        mutations = [Mutation(a, b) for a, b in list(zip(self.mutations, self.mutation_probabilities))]
+
         while not success:
-            success = numpy.random.choice(self.mutations, p=self.mutation_probabilities)(genome)
+            mutation = numpy.random.choice(mutations, p=[a.probability for a in mutations])
+            success = mutation.mutation(genome)
+
+            mutations.remove(mutation)
+            sum_chance = sum([a.probability for a in mutations])
+
+            if not sum_chance > 0:
+                break
+
+            mutations = [Mutation(a.mutation, a.probability / sum_chance) for a in mutations]
+
+            if success and random.random() < sum_chance:
+                success = False
+
+        if len(genome.connection_gene_list) < complexity:
+            print("problem1")
+
 
     def mutate_weights(self, genome: Genome) -> bool:
         num_connection_mutation: float = numpy.sin(random.random() * (numpy.pi / 2)) * len(genome.connection_gene_list)
@@ -421,3 +437,9 @@ def test():
     c = b.create_genome_list(5000, 9)
     map(lambda x: b.mutate_genome(x), c)
     print(time.time() - start)
+
+
+class Mutation:
+    def __init__(self, mutation, probability):
+        self.mutation = mutation
+        self.probability = probability

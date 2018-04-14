@@ -1,4 +1,5 @@
 import numpy
+from joblib import Parallel
 
 import evolution_parameters
 import genome_decoder
@@ -28,32 +29,34 @@ def main():
     list_evaluator = genome_evaluator.GenomeEvaluator(True, cart_pole)
 
     ea = EvolutionAlgorithm(evol_params, kmeans, NeatType.Objective, list_evaluator, genome_factory, 150)
+    ea.initialization()
 
-    while True:
-        ea.perform_generation()
-        if ea.current_champ is not None:
-            print("Generation " + str(ea.genome_factory.current_generation))
-            print(ea.current_champ.fitness)
+    with Parallel(n_jobs=4, backend="threading") as parallel:
+        while True:
+            ea.perform_generation(parallel)
+            if ea.current_champ is not None:
+                print("Generation " + str(ea.genome_factory.current_generation))
+                print(ea.current_champ.fitness)
 
-            if ea.genome_factory.current_generation % 100 == 0:
-                network = genome_decoder.create_acyclic_network(ea.current_champ)
+                if ea.genome_factory.current_generation % 100 == 0:
+                    network = genome_decoder.create_acyclic_network(ea.current_champ)
 
-                observation = cart_pole.env.reset()
+                    observation = cart_pole.env.reset()
 
-                while True:
-                    cart_pole.env.render()
-                    observation[0] /= 2.4
-                    observation[2] /= 41.8
+                    while True:
+                        cart_pole.env.render()
+                        observation[0] /= 2.4
+                        observation[2] /= 41.8
 
-                    network.set_input(observation)
-                    network.activate()
-                    output = network.get_output()[0]
-                    action = 0 if output > 0 else 1
+                        network.set_input(observation)
+                        network.activate()
+                        output = network.get_output()[0]
+                        action = 0 if output > 0 else 1
 
-                    observation, reward, done, info = cart_pole.env.step(action)
+                        observation, reward, done, info = cart_pole.env.step(action)
 
-                    if done:
-                        break
+                        if done:
+                            break
 
 
 class CartPole:
