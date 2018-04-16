@@ -4,10 +4,7 @@ from joblib import Parallel
 import evolution_parameters
 import genome_decoder
 import genome_evaluator
-import genome_parameters
 import activation_function_library
-import network_visualizer
-import xml_parser
 from acyclic_network import AcyclicNetwork
 from evolution_algorithm import EvolutionAlgorithm
 from genome_factory import GenomeFactory
@@ -41,6 +38,7 @@ def main():
                 print("Generation " + str(ea.genome_factory.current_generation))
                 print(ea.current_champ.fitness)
                 print(([(a.from_id, a.to_id) for a in ea.current_champ.connection_gene_list]))
+
 
                 if ea.genome_factory.current_generation % 100 == 0:
                     for i in range(len(ea.genome_list)):

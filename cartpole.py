@@ -1,22 +1,16 @@
-import numpy
 from joblib import Parallel
 
 import evolution_parameters
 import genome_decoder
 import genome_evaluator
-import genome_parameters
 import activation_function_library
 from acyclic_network import AcyclicNetwork
 from evolution_algorithm import EvolutionAlgorithm
 from genome_factory import GenomeFactory
 from kmeans_clustering import KMeansClustering
 from manhattan_distance_metric import ManhattanDistanceMetric
-import activation_fns
 from neat_type import NeatType
-import matplotlib.pyplot as plt
 import gym
-
-from neuron_gene import NeuronGene
 
 
 def main():
@@ -31,7 +25,7 @@ def main():
     ea = EvolutionAlgorithm(evol_params, kmeans, NeatType.Objective, list_evaluator, genome_factory, 150)
     ea.initialization()
 
-    with Parallel(n_jobs=4, backend="threading") as parallel:
+    with Parallel(n_jobs=1, backend="threading") as parallel:
         while True:
             ea.perform_generation(parallel)
             if ea.current_champ is not None:

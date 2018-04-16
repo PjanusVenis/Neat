@@ -177,7 +177,7 @@ class EvolutionAlgorithm:
 
                 sexual_offsprings.append(self.genome_factory.create_offspring_sexual(genome1, genome2, self.neat_type))
 
-            offspring_list = sexual_offsprings + cross_specie_offsprings + specie_offsprings
+            offspring_list.extend(sexual_offsprings + cross_specie_offsprings + specie_offsprings)
 
         return offspring_list
 
