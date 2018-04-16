@@ -10,4 +10,4 @@ class EvolutionParameters:
         self.offspring_interspecies_proportion = offspring_interspecies_proportion
 
 
-default_evolution_parameters = EvolutionParameters(10, 0.2, 0.2, 0.5, 0.49, 0.01)
+default_evolution_parameters = EvolutionParameters(5, 0.2, 0.2, 0.5, 0.49, 0.01)

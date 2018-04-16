@@ -54,7 +54,7 @@ class EvolutionAlgorithm:
             specie = self.specie_list[i]
             specie_stat = specie_stats[i]
 
-            specie.genome_list = specie.genome_list[:len(specie.genome_list) - specie_stat.elite_size_int]
+            specie.genome_list = specie.genome_list[:specie_stat.elite_size_int]
 
     def calculate_specie_stats(self) -> (List[SpecieStats], int):
         total_mean_fitness = 0.0

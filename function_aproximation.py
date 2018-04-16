@@ -5,6 +5,7 @@ import evolution_parameters
 import genome_decoder
 import genome_evaluator
 import activation_function_library
+import xml_parser
 from acyclic_network import AcyclicNetwork
 from evolution_algorithm import EvolutionAlgorithm
 from genome_factory import GenomeFactory
@@ -16,7 +17,7 @@ import matplotlib.pyplot as plt
 
 
 def fn(x):
-    return activation_fns.sine(x * 2 * numpy.pi)
+    return activation_fns.sine(x * 2)
 
 
 def main():
@@ -28,17 +29,15 @@ def main():
     fn_evaluator = FunctionEvaluator(fn)
     list_evaluator = genome_evaluator.GenomeEvaluator(True, fn_evaluator)
 
-    ea = EvolutionAlgorithm(evol_params, kmeans, NeatType.Objective, list_evaluator, genome_factory, 500)
+    ea = EvolutionAlgorithm(evol_params, kmeans, NeatType.Objective, list_evaluator, genome_factory, 100)
     ea.initialization()
 
     while True:
-        with Parallel(n_jobs=4, backend="threading") as parallel:
+        with Parallel(n_jobs=14, backend="threading") as parallel:
             ea.perform_generation(parallel)
             if ea.current_champ is not None:
                 print("Generation " + str(ea.genome_factory.current_generation))
                 print(ea.current_champ.fitness)
-                print(([(a.from_id, a.to_id) for a in ea.current_champ.connection_gene_list]))
-
 
                 if ea.genome_factory.current_generation % 100 == 0:
                     for i in range(len(ea.genome_list)):

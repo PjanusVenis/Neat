@@ -10,7 +10,7 @@ def identity(a: float) -> float:
 
 
 def sigmoid(a: float) -> float:
-    return 1 / (1 + numpy.exp(-a))
+    return 1 / (1 + numpy.exp(-5 * a))
 
 
 def relu(a: float) -> float:
@@ -18,7 +18,7 @@ def relu(a: float) -> float:
 
 
 def sine(a: float) -> float:
-    return numpy.sin(a)
+    return numpy.sin(a * numpy.pi)
 
 
 def binary(a: float) -> float:
